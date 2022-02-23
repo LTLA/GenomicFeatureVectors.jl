@@ -46,4 +46,34 @@ function mock_elementdata(n::Int)
     return DataFrames.DataFrame(name = Vector{Nothing}(undef, n))
 end
 
+function combine_seqinfo(A::Vararg{GenomicFeatureVector})
+    s = copy(seqinfo(A[1]))
+    already = Set{String}(s[!,"seqname"])
 
+    for a in 2:length(A)
+        curs = seqinfo(A[a])
+        curnames = curs[!,"seqname"]
+
+        for i in 1:length(curnames)
+            if !(curnames[i] in already)
+                push!(already, curnames[i])
+                push!(s, curs[i,:])
+            end
+        end
+    end
+
+    return s
+end
+
+function combine_metadata(A::Vararg{GenomicFeatureVector})
+    m = copy(metadata(A[1]))
+    for a in 2:length(A)
+        curm = metadata(A[a])
+        for (k, v) in curm
+            if !haskey(m, k)
+                m[k] = v
+            end
+        end
+    end
+    return m
+end

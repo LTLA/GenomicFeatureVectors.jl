@@ -171,3 +171,39 @@ end
 function Base.length(x::GenomicRangeVector{T}) where {T}
     return length(x.intervals)
 end
+
+"""
+    vcat(A::Vararg{GenomicRangeVector{T}})
+
+Returns a `GenomicRangeVector{T}` containing the concatenated intervals from all `A`.
+The length of the output is equal to the sum of the lengths of all input objects.
+
+Element data is concatenated by row, so each entry of `A` should have the same type and name of columns in their [`elementdata`](@ref).
+
+Sequence information in [`seqinfo`](@ref) is concatenated by row across `A`, but only for non-duplicated `seqname` entries.
+If duplicates are present, earlier occurrences take precedence and later occurrences are dropped silently.
+
+Metadata in [`metadata`](@ref) is combined across `A`.
+Earlier occurrences of each key take precedence, and later occurrences are dropped silently.
+
+# Examples
+```jldoctest
+julia> using GenomicFeatureVectors
+
+julia> first = examplegrv(5);
+
+julia> second = examplegrv(10);
+
+julia> combined = vcat(first, second);
+
+julia> length(combined)
+15
+```
+"""
+function Base.vcat(A::Vararg{GenomicRangeVector{T}}) where {T}
+    allint = vcat([intervals(x) for x in A]...)
+    alledata = vcat([elementdata(x) for x in A]...)
+    allsi = combine_seqinfo(A...)
+    allm = combine_metadata(A...)
+    return GenomicRangeVector(allint, allsi, alledata, allm)
+end
