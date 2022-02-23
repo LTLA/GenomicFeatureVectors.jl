@@ -1,43 +1,146 @@
-export GenomicRangeVector
+export GenomicRangeVector, intervals, setintervals!
 import DataFrames
 import GenomicFeatures
 
-struct GenomicRangeVector <: GenomicFeatureVector
-    intervals::Vector{GenomicFeatures.Interval{nothing}}
+"""
+The `GenomicRangeVector` is a wrapper around a vector of `GenomicFeatures.Interval` objects,
+decorated with some annotations and metadata to make it similar to Bioconductor's `GenomicRanges` objects.
+Specifically, we add sequence information (`seqinfo`), per-element data (`elementdata`) and per-vector metadata (`metadata`).
+Besides these additions, instances should behave like a vector of intervals.
+"""
+struct GenomicRangeVector{T} <: GenomicFeatureVector{GenomicFeatures.Interval{T}}
+    intervals::Vector{GenomicFeatures.Interval{T}}
     seqinfo::DataFrames.DataFrame
-    mcols::DataFrames.DataFrame
+    elementdata::DataFrames.DataFrame
     metadata::Dict{String,Any}
 
-    function GenomicRangeVector()
+    @doc """
+        GenomicRangeVector()
+
+    Default constructor.
+
+    # Examples
+    ```jldoctest
+    julia> using GenomicFeatureVectors;
+
+    julia> x = GenomicRangeVector();
+
+    julia> length(x)
+    0
+    ```
+    """
+    function GenomicRangeVector() where {T}
         mockseq = mock_seqinfo()
-        mockmcols = mock_mcol(length(intervals))
-        new(GenomicFeatures.Interval{nothing}[], mockseq, mockmcols, Dict{String,Any}())
+        mockelementdata = mock_elementdata(length(intervals))
+        new{T}(GenomicFeatures.Interval{T}[], mockseq, mockelementdata, Dict{String,Any}())
     end
 
-    function GenomicRangeVector(intervals::Vector{GenomicFeatures.Interval{nothing}})
+    @doc """
+        GenomicRangeVector(intervals::Vector{GenomicFeatures.Interval{nothing}}))
+
+    Constructor from an existing vector of intervals.
+
+    # Examples
+    ```jldoctest
+    julia> using GenomicFeatureVectors, GenomicFeatures;
+
+    julia> test = GenomicFeatures.Interval{Nothing}[
+               GenomicFeatures.Interval("chrA", 1, 10),
+               GenomicFeatures.Interval("chrB", 2, 20),
+               GenomicFeatures.Interval("chrC", 3, 30)
+           ];
+
+    julia> x = GenomicRangeVector(test);
+
+    julia> length(x)
+    3 
+    ```
+    """
+    function GenomicRangeVector(intervals::Vector{GenomicFeatures.Interval{T}}) where {T}
         mockseq = mock_seqinfo()
-        mockmcols = mock_mcol(length(intervals))
-        new(intervals, mockseq, mockmcols, Dict{String,Any}())
+        mockelementdata = mock_elementdata(length(intervals))
+        new{T}(intervals, mockseq, mockelementdata, Dict{String,Any}())
     end
 
-    function GenomicRangeVector(
-            intervals::Vector{GenomicFeatures.Interval{nothing}}, 
+    @doc """
+        GenomicRangeVector(
+            intervals::Vector{GenomicFeatures.Interval{nothing}}),
             seqinfo::DataFrames.DataFrame, 
-            mcols::DataFrames.DataFrame, 
+            elementdata::DataFrames.DataFrame, 
             metadata::Dict{String,Any} = Dict{String,Any}()
         )
 
-        check_mcols(mcols, length(intervals))
+    Full constructor.
+    See `setseqinfo!`, `setelementdata!` and `setmetadata!` for details on the requirements of each argument.
+
+    # Examples
+    ```jldoctest
+    julia> using GenomicFeatureVectors, GenomicFeatures, DataFrames;
+
+    julia> test = GenomicFeatures.Interval{Nothing}[
+               GenomicFeatures.Interval("chrA", 1, 10),
+               GenomicFeatures.Interval("chrB", 2, 20),
+               GenomicFeatures.Interval("chrC", 3, 30)
+           ];
+
+    julia> seqinfo = DataFrames.DataFrame(
+               seqname = ["chrA", "chrB", "chrC"],
+               length = [100, 200, 300],
+               circular = [false, false, false],
+               genome = ["mm10", "hg19", "rnor6"]
+           );
+
+    julia> edata = DataFrames.DataFrame(
+               name = ["Alan", "Barney", "Chuck"],
+               type = ["protein", "rRNA", "tRNA"]
+           );
+
+    julia> meta = Dict("foo" => 2, "bar"=>"BAR");
+
+    julia> x = GenomicRangeVector(test, seqinfo, edata, meta);
+
+    julia> length(x)
+    3 
+    ```
+    """
+    function GenomicRangeVector(
+            intervals::Vector{GenomicFeatures.Interval{T}}, 
+            seqinfo::DataFrames.DataFrame, 
+            elementdata::DataFrames.DataFrame, 
+            metadata::Dict{String,Any} = Dict{String,Any}()
+        ) where {T}
+
+        check_elementdata(elementdata, length(intervals))
         check_seqinfo(seqinfo)
-        new(intervals, seqinfo, mcols, metadata)
+        new{T}(intervals, seqinfo, elementdata, metadata)
     end
 end
 
-function intervals(x::GenomicRangeVector)
+"""
+    intervals(x::GenomicRangeVector{T})
+
+Retrieve the underlying vector of `GenomicFeatures.Interval` objects from `x`.
+
+# Examples
+```jldoctest
+julia> using GenomicFeatureVectors
+
+julia> x = examplegrv(10);
+
+julia> y = intervals(x);
+
+julia> length(y)
+10
+
+julia> typeof(y[1])
+GenomicFeatures.Interval{Nothing}
+```
+"""
+function intervals(x::GenomicRangeVector{T}) where {T}
     return x.intervals
 end
 
-function setintervals!(x::GenomicRangeVector, intervals::Vector{GenomicFeatures.Interval{nothing}})
+function setintervals!(x::GenomicRangeVector{T}, intervals::Vector{GenomicFeatures.Interval{T}}) where {T}
     if length(intervals) != length(x)
         throw(ErrorException("'intervals' and 'x' should have the same length"))
     end
@@ -45,47 +148,26 @@ function setintervals!(x::GenomicRangeVector, intervals::Vector{GenomicFeatures.
     return x
 end
 
-function mcols(x::GenomicRangeVector)
-    return x.mcols
-end
-
-function setmcols!(x::GenomicRangeVector, mcols::DataFrames.DataFrame)
-    if size(mcols)[1] != length(x)
-        throw(ErrorException("'intervals' and 'x' should have the same length"))
-    end
-    x.mcols = mcols
-    return x
-end
-
-function metadata(x::GenomicRangeVector)
-    return x.metadata
-end
-
-function setmetadata!(x::GenomicRangeVector, metadata::Dict{String,Any})
-    x.metadata = metadata
-    return x
-end
-
-function Base.getindex(x::GenomicRangeVector, I::Int)
+function Base.getindex(x::GenomicRangeVector{T}, I::Int) where {T}
     return x.intervals[I]
 end
 
-function Base.getindex(x::GenomicRangeVector, I)
-    return GenomicRangeVector(x.intervals[I], x.mcols[I,:], x.metadata)
+function Base.getindex(x::GenomicRangeVector{T}, I) where {T}
+    return GenomicRangeVector(x.intervals[I], x.elementdata[I,:], x.metadata)
 end
 
-function Base.setindex!(x::GenomicRangeVector, v::GenomicFeatures.Interval{nothing}, I::Int)
+function Base.setindex!(x::GenomicRangeVector{T}, v::GenomicFeatures.Interval{T}, I::Int) where {T}
     x.intervals[I] = v
     return x
 end
 
-function Base.setindex!(x::GenomicRangeVector, v::GenomicRangeVector, I)
+function Base.setindex!(x::GenomicRangeVector{T}, v::GenomicRangeVector{T}, I) where {T}
     x.intervals[I] = v.intervals
-    x.mcols[I,:] = v.mcols
+    x.elementdata[I,:] = v.elementdata
     x.metadata = v.metadata
     return x
 end
 
-function Base.length(x::GenomicRangeVector)
+function Base.length(x::GenomicRangeVector{T}) where {T}
     return length(x.intervals)
 end
