@@ -1,0 +1,4 @@
+name = "GenomicRanges"
+uuid = "d3dd2677-0723-41d4-8eab-c60ffbbcb51f"
+authors = ["Aaron Lun <lun.aaron@gene.com>"]
+version = "0.1.0"
