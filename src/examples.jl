@@ -50,7 +50,7 @@ function examplegrv(n::Int)
         type[i] = possible_types[Integer(ceil(rand() * length(possible_types)))]
     end
 
-    edata = DataFrames.DataFrame(name = name, type = type)
+    edata = DataFrames.DataFrame("name" => name, "type" => type)
     meta = Dict("foo" => 2, "bar"=>"BAR");
     return GenomicRangeVector(test, seqinfo, edata, meta)
 end
@@ -105,7 +105,7 @@ function exampleggrv(ngroups::Int, nranges::Int)
         type[i] = possible_types[Integer(ceil(rand() * length(possible_types)))]
     end
 
-    edata = DataFrames.DataFrame(name = name, type = type)
+    edata = DataFrames.DataFrame("name" => name, "type" => type)
     meta = Dict("foo" => 2, "bar" => "BAR");
     return GroupedGenomicRangeVector(rr, lengths, edata, meta; islength = true)
 end

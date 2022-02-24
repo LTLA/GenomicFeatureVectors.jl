@@ -25,25 +25,32 @@ function check_seqinfo(seqinfo::DataFrames.DataFrame)
         throw(ErrorException("'seqinfo' should contain at least 4 columns"))
     end
 
-    if names(seqinfo)[2] != "length" || !isa(seqinfo[!,2], AbstractVector{<:Integer})
-        throw(ErrorException("second column of 'seqinfo' should be named 'length' and contain integer lengths"))
+    if names(seqinfo)[2] != "length" || !isa(seqinfo[!,2], AbstractVector{<:Union{Missing,<:Integer}})
+        println(names(seqinfo))
+        println(seqinfo[!,2])
+        throw(ErrorException("second column of 'seqinfo' should be named 'length' and contain integers and/or missing values"))
     end
 
-    if names(seqinfo)[3] != "circular" || !isa(seqinfo[!,3], AbstractVector{Bool})
-        throw(ErrorException("second column of 'seqinfo' should be named 'circular' and contain circular flags"))
+    if names(seqinfo)[3] != "circular" || !isa(seqinfo[!,3], AbstractVector{<:Union{Missing,Bool}})
+        throw(ErrorException("second column of 'seqinfo' should be named 'circular' and contain booleans and/or missing values"))
     end
 
-    if names(seqinfo)[4] != "genome" || !isa(seqinfo[!,4], AbstractVector{<:AbstractString})
-        throw(ErrorException("second column of 'seqinfo' should be named 'genome' and contain genome identifiers"))
+    if names(seqinfo)[4] != "genome" || !isa(seqinfo[!,4], AbstractVector{<:Union{String,<:AbstractString}})
+        throw(ErrorException("second column of 'seqinfo' should be named 'genome' and contain strings and/or missing values"))
     end
 end
 
 function mock_seqinfo()
-    return DataFrames.DataFrame(name = String[], length=Int[], circular=Bool[], genome=String[])
+    return DataFrames.DataFrame(
+        "name" => String[], 
+        "length" => Int[], 
+        "circular" => Bool[], 
+        "genome" => String[]
+    )
 end
 
 function mock_elementdata(n::Int)
-    return DataFrames.DataFrame(name = Vector{Nothing}(undef, n))
+    return DataFrames.DataFrame("name" => Vector{Nothing}(undef, n))
 end
 
 function combine_seqinfo(A::Vararg{GenomicFeatureVector})
