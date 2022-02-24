@@ -32,11 +32,11 @@ function check_seqinfo(seqinfo::DataFrames.DataFrame)
     end
 
     if names(seqinfo)[3] != "circular" || !isa(seqinfo[!,3], AbstractVector{<:Union{Missing,Bool}})
-        throw(ErrorException("second column of 'seqinfo' should be named 'circular' and contain booleans and/or missing values"))
+        throw(ErrorException("thirdcolumn of 'seqinfo' should be named 'circular' and contain booleans and/or missing values"))
     end
 
-    if names(seqinfo)[4] != "genome" || !isa(seqinfo[!,4], AbstractVector{<:Union{String,<:AbstractString}})
-        throw(ErrorException("second column of 'seqinfo' should be named 'genome' and contain strings and/or missing values"))
+    if names(seqinfo)[4] != "genome" || !isa(seqinfo[!,4], AbstractVector{<:Union{Missing,<:AbstractString}})
+        throw(ErrorException("fourth column of 'seqinfo' should be named 'genome' and contain strings and/or missing values"))
     end
 end
 
