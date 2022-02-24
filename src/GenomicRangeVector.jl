@@ -2,36 +2,41 @@ export GenomicRangeVector, intervals, setintervals!
 import DataFrames
 import GenomicFeatures
 
+############# Class definition ################
+
 """
 The `GenomicRangeVector` is a wrapper around a vector of `GenomicFeatures.Interval` objects,
 decorated with some annotations and metadata to make it similar to Bioconductor's `GenomicRanges` objects.
 Specifically, we add sequence information (`seqinfo`), per-element data (`elementdata`) and per-vector metadata (`metadata`).
 Besides these additions, instances should behave like a vector of intervals.
 """
-struct GenomicRangeVector{T} <: GenomicFeatureVector{GenomicFeatures.Interval{T}}
+mutable struct GenomicRangeVector{T} <: GenomicFeatureVector{GenomicFeatures.Interval{T}}
     intervals::Vector{GenomicFeatures.Interval{T}}
     seqinfo::DataFrames.DataFrame
     elementdata::DataFrames.DataFrame
     metadata::Dict{String,Any}
 
     @doc """
-        GenomicRangeVector()
+        GenomicRangeVector(T)
 
-    Default constructor.
+    Create an empty `GenomicRangeVector{T}`.
 
     # Examples
     ```jldoctest
     julia> using GenomicFeatureVectors;
 
-    julia> x = GenomicRangeVector();
+    julia> x = GenomicRangeVector(Nothing);
+
+    julia> typeof(x)
+    GenomicRangeVector{Nothing}
 
     julia> length(x)
     0
     ```
     """
-    function GenomicRangeVector() where {T}
+    function GenomicRangeVector(T) 
         mockseq = mock_seqinfo()
-        mockelementdata = mock_elementdata(length(intervals))
+        mockelementdata = mock_elementdata(0)
         new{T}(GenomicFeatures.Interval{T}[], mockseq, mockelementdata, Dict{String,Any}())
     end
 
@@ -116,6 +121,8 @@ struct GenomicRangeVector{T} <: GenomicFeatureVector{GenomicFeatures.Interval{T}
     end
 end
 
+############# Custom methods ################
+
 """
     intervals(x::GenomicRangeVector{T})
 
@@ -148,12 +155,14 @@ function setintervals!(x::GenomicRangeVector{T}, intervals::Vector{GenomicFeatur
     return x
 end
 
+############# Vector methods ################
+
 function Base.getindex(x::GenomicRangeVector{T}, I::Int) where {T}
     return x.intervals[I]
 end
 
 function Base.getindex(x::GenomicRangeVector{T}, I) where {T}
-    return GenomicRangeVector(x.intervals[I], x.elementdata[I,:], x.metadata)
+    return GenomicRangeVector(x.intervals[I], x.seqinfo, x.elementdata[I,:], x.metadata)
 end
 
 function Base.setindex!(x::GenomicRangeVector{T}, v::GenomicFeatures.Interval{T}, I::Int) where {T}
@@ -164,7 +173,6 @@ end
 function Base.setindex!(x::GenomicRangeVector{T}, v::GenomicRangeVector{T}, I) where {T}
     x.intervals[I] = v.intervals
     x.elementdata[I,:] = v.elementdata
-    x.metadata = v.metadata
     return x
 end
 
@@ -206,4 +214,58 @@ function Base.vcat(A::Vararg{GenomicRangeVector{T}}) where {T}
     allsi = combine_seqinfo(A...)
     allm = combine_metadata(A...)
     return GenomicRangeVector(allint, allsi, alledata, allm)
+end
+
+############# Miscellaneous methods ################
+
+"""
+    copy(x::GenomicRangeVector{T})
+
+Create a copy of `x`.
+Note that this function does not copy any of the fields of `x`;
+each field in the returned object still refers to the same object as the corresponding field in `x`.
+
+```jldoctest
+julia> using GenomicFeatureVectors
+
+julia> x = examplegrv(10);
+
+julia> y = copy(x);
+
+julia> intervals(y) === intervals(x)
+true
+```
+"""
+function Base.copy(x::GenomicRangeVector{T}) where {T}
+    output = GenomicRangeVector(T)
+    output.intervals = x.intervals
+    output.seqinfo = x.seqinfo
+    output.elementdata = x.elementdata
+    output.metadata = x.metadata
+    return output
+end
+
+"""
+    deepcopy(x::GenomicRangeVector{T})
+
+Create a deep copy of `x`.
+
+```jldoctest
+julia> using GenomicFeatureVectors
+
+julia> x = examplegrv(5);
+
+julia> y = deepcopy(x);
+
+julia> intervals(y) === intervals(x)
+false
+```
+"""
+function Base.deepcopy(x::GenomicRangeVector{T}) where {T}
+    output = GenomicRangeVector(T)
+    output.intervals = deepcopy(x.intervals)
+    output.seqinfo = deepcopy(x.seqinfo)
+    output.elementdata = deepcopy(x.elementdata)
+    output.metadata = deepcopy(x.metadata)
+    return output
 end

@@ -1,6 +1,6 @@
 export GenomicFeatureVector
 export elementdata, seqinfo, metadata
-export elementdata!, seqinfo!, metadata!
+export setelementdata!, setseqinfo!, setmetadata!
 import DataFrames
 
 abstract type GenomicFeatureVector{T} <: AbstractVector{T} end
