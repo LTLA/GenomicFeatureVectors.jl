@@ -4,6 +4,8 @@ export seqinfo, setseqinfo!
 export ranges, setranges!
 export lengths
 
+############# Class definition ################
+
 function create_cumulative(groups::AbstractVector{<:Integer}, islength::Bool)
     cumulative = Vector{Int}(undef, length(groups))
 
@@ -35,14 +37,14 @@ mutable struct GroupedGenomicRangeVector{T} <: GenomicFeatureVector{GenomicRange
     elementdata::DataFrames.DataFrame
     metadata::Dict{String,Any}
 
-    function GroupedGenomicRangeVector() where {T}
-        mockelementdata = mock_elementdata(length(intervals))
-        new{T}(GenomicRangeVector{T}(), Int[], mockelementdata, Dict{String,Any})
+    function GroupedGenomicRangeVector(T)
+        mockelementdata = mock_elementdata(0)
+        new{T}(GenomicRangeVector(T), Int[], mockelementdata, Dict{String,Any})
     end
 
     function GroupedGenomicRangeVector(ranges::GenomicRangeVector{T}, groups::Vector{Int}; islength = true) where {T}
         cumulative = create_cumulative(groups, islength)
-        mockelementdata = mock_elementdata(length(intervals))
+        mockelementdata = mock_elementdata(length(groups))
         new{T}(ranges, cumulative, mockelementdata, Dict{String,Any})
     end
 
@@ -59,16 +61,8 @@ mutable struct GroupedGenomicRangeVector{T} <: GenomicFeatureVector{GenomicRange
     end
 end
 
-"""
-    length(x::GroupedGenomicRangeVector{T})
-
-Return the number of groups in `x`.
-To get the size of each group, use [`lengths`](@ref) instead.
-"""
-function Base.length(x::GroupedGenomicRangeVector{T}) where {T}
-    return length(x.cumulative)
-end
-
+############# Custom methods ################
+#
 """
     intervals(x::GroupedGenomicRangeVector{T}) 
 
@@ -254,6 +248,18 @@ function lengths(x::GroupedGenomicRangeVector{T}) where {T}
         end
     end
     return output
+end
+
+############# Miscellaneous methods ################
+
+"""
+    length(x::GroupedGenomicRangeVector{T})
+
+Return the number of groups in `x`.
+To get the size of each group, use [`lengths`](@ref) instead.
+"""
+function Base.length(x::GroupedGenomicRangeVector{T}) where {T}
+    return length(x.cumulative)
 end
 
 function single_element_range(x::GroupedGenomicRangeVector{T}, i::Int) where {T}
@@ -535,4 +541,58 @@ function Base.vcat(A::Vararg{GroupedGenomicRangeVector{T}}) where {T}
 
     m = combine_metadata(A...)
     return GroupedGenomicRangeVector(rerange, recum, edata, m; islength = false)
+end
+
+############# Miscellaneous methods ################
+
+"""
+    copy(x::GroupedGenomicRangeVector{T})
+
+Create a copy of `x`.
+Note that this function does not copy any of the fields of `x`;
+each field in the returned object still refers to the same object as the corresponding field in `x`.
+
+```jldoctest
+julia> using GenomicFeatureVectors
+
+julia> x = exampleggrv(5, 10);
+
+julia> y = copy(x);
+
+julia> intervals(y) === intervals(x)
+true
+```
+"""
+function Base.copy(x::GroupedGenomicRangeVector{T}) where {T}
+    output = GroupedGenomicRangeVector(T)
+    output.ranges = x.ranges
+    output.cumulative = x.cumulative
+    output.elementdata = x.elementdata
+    output.metadata = x.metadata
+    return output
+end
+
+"""
+    deepcopy(x::GroupedGenomicRangeVector{T})
+
+Create a deep copy of `x`.
+
+```jldoctest
+julia> using GenomicFeatureVectors
+
+julia> x = exampleggrv(5, 10);
+
+julia> y = deepcopy(x);
+
+julia> ranges(y) === ranges(x)
+false
+```
+"""
+function Base.deepcopy(x::GroupedGenomicRangeVector{T}) where {T}
+    output = GroupedGenomicRangeVector(T)
+    output.ranges = deepcopy(x.ranges)
+    output.cumulative = deepcopy(x.cumulative)
+    output.elementdata = deepcopy(x.elementdata)
+    output.metadata = deepcopy(x.metadata)
+    return output
 end
